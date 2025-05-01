@@ -4,7 +4,7 @@
 
 ;; Author: Kanon Kakuno <yadex205@outlook.jp> and contributors
 ;; Homepage: https://github.com/yadex205/consult-ag
-;; Package-Requires: ((emacs "27.1") (consult "0.32"))
+;; Package-Requires: ((emacs "27.1") (consult "2.1"))
 ;; SPDX-License-Identifier: MIT
 ;; Version: 0.2.0
 
@@ -45,9 +45,10 @@
   "Return the candidate position marker for CAND.
 FIND-FILE is the file open function, defaulting to `find-file`."
   (when cand
-    (let ((file (get-text-property 0 'filename cand))
-          (row (string-to-number (get-text-property 0 'row cand)))
-          (column (- (string-to-number (get-text-property 0 'column cand)) 1)))
+    (let* ((split (split-string cand ":"))
+           (file (car split))
+           (row (string-to-number (nth 1 split)))
+           (column (- (string-to-number (nth 2 split)) 1)))
       (consult--marker-from-line-column (funcall (or find-file #'find-file) file) row column))))
 
 (defun consult-ag--grep-state ()
@@ -65,12 +66,12 @@ FIND-FILE is the file open function, defaulting to `find-file`."
   (interactive)
   (pcase-let* ((`(,prompt ,paths ,dir) (consult--directory-prompt "Consult ag: " target))
                (default-directory dir))
-    (consult--read (consult--async-command #'consult-ag--builder
+    (consult--read (consult--process-collection #'consult-ag--builder
                      (consult--async-map #'consult-ag--format))
                    :prompt prompt
                    :lookup #'consult--lookup-member
                    :state (consult-ag--grep-state)
-                   :initial (consult--async-split-initial initial)
+                   :initial initial
                    :require-match t
                    :category 'file
                    :sort nil)))
